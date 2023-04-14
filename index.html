@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Проект "Комменты"</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <p class = 'container-loading'></p>
+      <ul class="comments">
+        <!-- Рендерится в JS -->
+      </ul>
+      <div class="add-form">
+        <input
+          type="text"
+          class="add-form-name"
+          placeholder="Введите ваше имя"
+          oninput="checkValue()"
+          
+          
+        />
+        <textarea
+          type="textarea"
+          class="add-form-text"
+          placeholder="Введите ваш коментарий"
+          rows="4"          
+          oninput="checkValue()"
+          
+        ></textarea>
+        <div class="add-form-row">
+          <button class="add-form-button">Написать</button>
+          
+        </div>
+       
+        
+      </div>
+      <div class ="loading"> 
+        Комментарий добавляется...
+        <!-- <div class="tenor-gif-embed" data-postid="25834247" data-share-method="host" data-aspect-ratio="1" data-width="15%"><a href="https://tenor.com/view/loading-justin-murry-the-seafloor-cinema-tap-tapply-song-buffering-gif-25834247">Loading Justin Murry GIF</a>from <a href="https://tenor.com/search/loading-gifs">Loading GIFs</a></div> <script type="text/javascript" async src="https://tenor.com/embed.js"></script> -->
+      </div>
+    </div>
+  </body>
+
+  <script>
+
+const buttonInputElement = document.querySelector('.add-form-button');
+const nameInputElement = document.querySelector('.add-form-name');
+const commentInputElement = document.querySelector('.add-form-text');
+const listElement = document.querySelector('.comments');
+buttonInputElement.disabled = true;
+let arrayOfComments=[];
+let formElement = document.querySelector('.add-form');
+let loadElement = document.querySelector('.loading');
+let containerElement =document.querySelector('.container-loading');
+
+
+
+containerElement.textContent  = 'Пожалуйста подождите, загружаю комментарии';
+
+reload();
+
+checkValue();
+
+// 1. Функция производит GET запрос.  Полученные данные обрабатываются    в формат использованный в коде.
+
+  function reload() {
+
+    fetch("https://webdev-hw-api.vercel.app/api/v1/marat-rizatdinov/comments", {
+      method: "GET"
+    }).then((response) => {
+
+       return response.json()
+
+    }).then((responseData) => {            
+
+          arrayOfComments = responseData.comments.map(el => {
+
+                return{
+                    name: el.author.name,
+                    time: myDate(el.date),
+                    text: el.text,
+                    'likes-counter': el.likes,
+                    'likes-class': el.isLiked == true ? '-active-like' : '',
+                };              
+          });    
+
+          renderComment();
+    
+          formElement.classList.remove('add-form-load');
+          loadElement.classList.remove('loading-on');
+          containerElement.textContent ='';
+          
+    }).catch((error) => {
+      
+        errorAlert(error);        
+
+    });
+  };
+  
+// 2. Функция, рендерит данные в HTML
+
+  function renderComment() {
+
+      const listElement = document.querySelector('.comments');
+      
+      listElement.innerHTML = arrayOfComments.map((el,index)=> el=`
+            <li class="comment" data-index='${index}'>
+              <div class="comment-header">
+                <div class="comment-author">${el.name}</div>
+                <div class="comment-time">${el.time}</div>
+              </div>
+              <div class="comment-body">
+                <div class="comment-text">
+                  ${el.text}
+                </div>
+              </div>
+              <div class="comment-footer">
+                
+                <div class="likes">
+                  <span class="likes-counter">${el['likes-counter']}</span>
+                  <button class="like-button ${el['likes-class'] } "></button>
+                </div>
+              </div>
+            </li>`).join('');  
+
+      likes();         
+  }
+
+
+// 3. Создадим функцию ,которая снимает блокировку кнопки ввода
+
+  function checkValue() {
+    if( nameInputElement.value != '' && commentInputElement.value != '') buttonInputElement.disabled = false; 
+  }
+
+// 4. Функция - обработчик клика
+
+  buttonInputElement.addEventListener('click',postAndGetComments); 
+  
+      
+// 5. Создадим функцию шаблон даты
+
+
+  function myDate (a) {
+      let date = new Date(a) || new Date();
+      let monthArray=['01','02','03','04','05','06','07','08','09','10','11','12'];
+      let myMinutes = String(date.getMinutes()).length < 2 ? '0' + date.getMinutes() : date.getMinutes();
+      let myHours = String(date.getHours()).length < 2 ? '0' + date.getHours() : date.getHours();
+      let myDay = String(date.getDate()).length < 2 ? '0' + date.getDate() : date.getDate();
+      let myMonth = monthArray[+date.getMonth()];
+      let myYear = String( date.getFullYear() ).slice(2);
+      let str= myDay + '.' + myMonth + '.' + myYear + ' ' + myHours + ':' + myMinutes;
+      return str;
+  }
+
+// 6. Обработчик лайков 
+
+  function likes() {
+ 
+    const listItems = listElement.querySelectorAll('.comment');
+
+    for(let key of listItems) {
+
+        const likeButton = key.querySelector('.like-button');
+        const likeCounter = key.querySelector('.likes-counter');
+        
+        likeButton.addEventListener('click',(event) => {
+          
+            event.stopPropagation();  
+
+            likeButton.classList.add('-loading-like');
+            
+            delay(2000).then(() => {
+
+                likeButton.classList.toggle('-active-like');
+                likeButton.classList.contains('-active-like') ? likeCounter.innerHTML++ : likeCounter.innerHTML--;
+                likeButton.classList.remove('-loading-like');
+
+            })                   
+
+        })
+    }
+
+  }
+// 7. Функция -имитация  задержки сервера
+
+    function delay(interval = 300) {
+
+        return new Promise((resolve) => {
+
+          setTimeout(() => {
+            resolve();
+          }, interval);
+
+        });
+    }
+
+// 8. Обработчик ошибок
+   
+    function errorAlert(error) {
+    
+        switch(error.message){
+          case '400':              
+              alert('Имя и комментарий должны быть не короче 3 символов');
+              formElement.classList.remove('add-form-load');
+              loadElement.classList.remove('loading-on');
+              buttonInputElement.disabled = false;
+              break;
+          case 'Failed to fetch': 
+              alert('Отсутствует интернет-соединение. Проверьте компьютер');
+              formElement.classList.remove('add-form-load');          
+              loadElement.classList.remove('loading-on');
+              buttonInputElement.disabled = false;
+              break;
+          case '500': 
+              console.log('Сервер сломался, попробуй позже');
+              postAndGetComments();                               // Если закомментировать эту строку и раскомментировать три нижние
+              // formElement.classList.remove('add-form-load');   // перейдем на ручное управление (нажимаем кнопку ручками)       
+              // loadElement.classList.remove('loading-on');
+              // buttonInputElement.disabled = false;
+              break;
+          default :
+              alert('Не знаю что за ошибка');
+              break;
+        }
+    }
+
+
+// 9. Функция отправляет и получает данные с комментариями сервера.
+
+
+    function postAndGetComments() {
+
+          if(nameInputElement.value == '' || commentInputElement.value == '') return;
+
+          nameInputElement.value = nameInputElement.value.replaceAll("&", "&amp;")
+                                                        .replaceAll("<", "&lt;")
+                                                        .replaceAll(">", "&gt;");
+              
+          commentInputElement.value = commentInputElement.value.replaceAll("&", "&amp;")
+                                                              .replaceAll("<", "&lt;")
+                                                              .replaceAll(">", "&gt;")
+                                                              .replaceAll('◄', '<div class ="quote">')
+                                                              .replaceAll('►', '</div><br>');
+
+                                                              
+          formElement.classList.add('add-form-load');  
+          loadElement.classList.add('loading-on');  
+          buttonInputElement.disabled = true;
+
+          fetch("https://webdev-hw-api.vercel.app/api/v1/marat-rizatdinov/comments", {
+
+            method: "POST",
+
+            body: JSON.stringify({ 
+                      text:commentInputElement.value,
+                      name: nameInputElement.value,
+                      forceError: true
+                      })
+          }).then((response) => {
+                  
+              if (response.status == 400) {
+                throw new Error(400);
+              }
+              if (response.status == 500) {
+                throw new Error(500);
+              }
+
+            return response.json()
+
+          }).then((responseData) => {
+                
+            reload();  
+            nameInputElement.value = '';
+            commentInputElement.value = ''; 
+
+          }).catch((error) => {
+                
+              errorAlert(error);       
+
+          });
+
+    }
+
+  </script>
+</html>
+
